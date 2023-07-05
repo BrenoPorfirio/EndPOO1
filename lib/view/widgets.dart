@@ -3,80 +3,104 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import '../data/data_service.dart';
 
 class Selection {
-  static const List<int> selection = [3, 5, 7];
+  static const List<int> options = [3, 5, 7];
+}
+
+class MyCustomScroll extends ScrollBehavior {
+  @override
+  Widget buildViewportChrome(
+    BuildContext context,
+    Widget child,
+    AxisDirection axisDirection,
+  ) {
+    return GlowingOverscrollIndicator(
+      child: child,
+      axisDirection: axisDirection,
+      color: Colors.deepPurple,
+      showLeading: false,
+      showTrailing: false,
+    );
+  }
 }
 
 class MyApp extends StatelessWidget {
-  final List<int> load = Selection.selection;
+  final List<int> loadOptions = Selection.options;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-        theme: ThemeData(primarySwatch: Colors.green),
-        debugShowCheckedModeBanner: false,
-        home: Scaffold(
-          appBar: AppBar(title: const Text("Dicas"), actions: [
+      theme: ThemeData(primarySwatch: Colors.deepPurple),
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(
+          title: const Text("Dicas"),
+          actions: [
             PopupMenuButton(
-              itemBuilder: (_) => load
-                  .map((num) => PopupMenuItem(
-                        value: num,
-                        child: Text("Carregar $num itens por vez"),
-                      ))
+              itemBuilder: (_) => loadOptions
+                  .map(
+                    (num) => PopupMenuItem(
+                      value: num,
+                      child: Text("Carregar $num itens por vez"),
+                    ),
+                  )
                   .toList(),
               onSelected: (number) {
                 dataService.numberOfItems = number;
               },
-            )
-          ]),
-          body: ValueListenableBuilder(
-              valueListenable: dataService.tableStateNotifier,
-              builder: (_, value, __) {
-                switch (value['status']) {
-                  case TableStatus.idle:
-                    return Center(child: Text("Toque em algum botão"));
-                  case TableStatus.loading:
-                    return Center(child: CircularProgressIndicator());
-                  case TableStatus.ready:
-                    return SingleChildScrollView(
-                        child: DataTableWidget(
-                            jsonObjects: value['dataObjects'],
-                            propertyNames: value['propertyNames'],
-                            columnNames: value['columnNames']));
-                  case TableStatus.error:
-                    return Text("Lascou");
-                }
-                return Text("...");
-              }),
-          bottomNavigationBar:
-              NewNavBar(itemSelectedCallback: dataService.carregar),
-        ));
+            ),
+          ],
+        ),
+        body: ValueListenableBuilder(
+          valueListenable: dataService.tableStateNotifier,
+          builder: (_, value, __) {
+            switch (value['status']) {
+              case TableStatus.idle:
+                return Center(child: Text("Toque em algum botão"));
+              case TableStatus.loading:
+                return Center(child: CircularProgressIndicator());
+              case TableStatus.ready:
+                return SingleChildScrollView(
+                  child: DataTableWidget(
+                    jsonObjects: value['dataObjects'],
+                    propertyNames: value['propertyNames'],
+                    columnNames: value['columnNames'],
+                  ),
+                );
+              case TableStatus.error:
+                return Text("Lascou");
+            }
+            return Text("...");
+          },
+        ),
+        bottomNavigationBar:
+            NewNavBar(itemSelectedCallback: dataService.carregar),
+      ),
+    );
   }
 }
 
 class NewNavBar extends HookWidget {
-  final Function(int) itemSelectedCallback;
+  final _itemSelectedCallback;
 
-  NewNavBar({required this.itemSelectedCallback});
+  NewNavBar({itemSelectedCallback})
+      : _itemSelectedCallback = itemSelectedCallback ?? (int) {}
 
   @override
   Widget build(BuildContext context) {
     var state = useState(1);
     return BottomNavigationBar(
-        selectedItemColor: Colors.green,
         onTap: (index) {
           state.value = index;
-          itemSelectedCallback(index);
+          _itemSelectedCallback(index);
         },
         currentIndex: state.value,
         items: const [
           BottomNavigationBarItem(
-            label: "Cafés",
-            icon: Icon(Icons.coffee_outlined),
-          ),
+              label: "Computadores", icon: Icon(Icons.computer_outlined)),
           BottomNavigationBarItem(
-              label: "Cervejas", icon: Icon(Icons.local_drink_outlined)),
+              label: "Veículos", icon: Icon(Icons.fire_truck_outlined)),
           BottomNavigationBarItem(
-              label: "Nações", icon: Icon(Icons.flag_outlined))
+              label: "Comidas", icon: Icon(Icons.fastfood_outlined))
         ]);
   }
 }
@@ -86,41 +110,27 @@ class DataTableWidget extends StatelessWidget {
   final List<String> columnNames;
   final List<String> propertyNames;
 
-  DataTableWidget({
-    this.jsonObjects = const [],
-    this.columnNames = const [],
-    this.propertyNames = const [],
-  });
+  DataTableWidget(
+      {this.jsonObjects = const [],
+      this.columnNames = const [],
+      this.propertyNames = const []});
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
+    return DataTable(
         columns: columnNames
-            .map(
-              (name) => DataColumn(
+            .map((name) => DataColumn(
+                onSort: (columnIndex, ascending) =>
+                    dataService.ordenarEstadoAtual(propertyNames[columnIndex]),
                 label: Expanded(
-                  child: Text(
-                    name,
-                    style: TextStyle(fontStyle: FontStyle.italic),
-                  ),
-                ),
-              ),
-            )
+                    child: Text(name,
+                        style: TextStyle(fontStyle: FontStyle.italic)))))
             .toList(),
         rows: jsonObjects
-            .map(
-              (obj) => DataRow(
+            .map((obj) => DataRow(
                 cells: propertyNames
-                    .map(
-                      (propName) => DataCell(Text(obj[propName])),
-                    )
-                    .toList(),
-              ),
-            )
-            .toList(),
-      ),
-    );
+                    .map((propName) => DataCell(Text(obj[propName])))
+                    .toList()))
+            .toList());
   }
 }
