@@ -110,27 +110,61 @@ class DataTableWidget extends StatelessWidget {
   final List<String> columnNames;
   final List<String> propertyNames;
 
-  DataTableWidget(
-      {this.jsonObjects = const [],
-      this.columnNames = const [],
-      this.propertyNames = const []});
+  DataTableWidget({
+    this.jsonObjects = const [],
+    this.columnNames = const [],
+    this.propertyNames = const [],
+  });
 
   @override
   Widget build(BuildContext context) {
-    return DataTable(
-        columns: columnNames
-            .map((name) => DataColumn(
-                onSort: (columnIndex, ascending) =>
-                    dataService.ordenarEstadoAtual(propertyNames[columnIndex]),
-                label: Expanded(
-                    child: Text(name,
-                        style: TextStyle(fontStyle: FontStyle.italic)))))
-            .toList(),
-        rows: jsonObjects
-            .map((obj) => DataRow(
-                cells: propertyNames
-                    .map((propName) => DataCell(Text(obj[propName])))
-                    .toList()))
-            .toList());
+    bool isAscending = false;
+    bool isDescending = false;
+
+    if (dataService.temRequisicaoEmCurso()) {
+      bool currentAscending = dataService.tableStateNotifier.value['ascending'];
+
+      if (currentAscending) {
+        isAscending = true;
+      } else {
+        isDescending = true;
+      }
+    }
+
+    return Column(
+      children: [
+        if (isAscending) Text('Ordenação: Crescente'),
+        if (isDescending) Text('Ordenação: Decrescente'),
+        DataTable(
+          columns: columnNames.asMap().entries.map((entry) {
+            final index = entry.key;
+            final name = entry.value;
+
+            return DataColumn(
+              label: Text(
+                name,
+                style: TextStyle(fontStyle: FontStyle.italic),
+              ),
+              onSort: (int columnIndex, bool ascending) {
+                String propName = propertyNames[columnIndex];
+                dataService.ordenarEstadoAtual(
+                  propName,
+                  ordemCrescente: ascending,
+                );
+              },
+            );
+          }).toList(),
+          rows: jsonObjects.map((obj) {
+            return DataRow(
+              cells: propertyNames.map((propName) {
+                return DataCell(
+                  Text(obj[propName]),
+                );
+              }).toList(),
+            );
+          }).toList(),
+        ),
+      ],
+    );
   }
 }
