@@ -3,22 +3,22 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import '../data/data_service.dart';
 
 class Selection {
-  static const List<int> options = [3, 5, 7];
+  static const List<int> options = [3, 5, 15];
 }
 
-class MyCustomScroll extends ScrollBehavior {
+class CustomScroll extends ScrollBehavior {
   @override
   Widget buildViewportChrome(
     BuildContext context,
-    Widget child,
     AxisDirection axisDirection,
+    Widget child,
   ) {
     return GlowingOverscrollIndicator(
-      child: child,
       axisDirection: axisDirection,
-      color: Colors.deepPurple,
-      showLeading: false,
+      child: child,
+      color: Colors.red,
       showTrailing: false,
+      showLeading: false,
     );
   }
 }
@@ -29,7 +29,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      theme: ThemeData(primarySwatch: Colors.deepPurple),
+      theme: ThemeData(primarySwatch: Colors.red),
       debugShowCheckedModeBanner: false,
       home: Scaffold(
         appBar: AppBar(
@@ -105,66 +105,42 @@ class NewNavBar extends HookWidget {
   }
 }
 
-class DataTableWidget extends StatelessWidget {
+class DataTableWidget extends HookWidget {
   final List jsonObjects;
   final List<String> columnNames;
   final List<String> propertyNames;
 
-  DataTableWidget({
-    this.jsonObjects = const [],
-    this.columnNames = const [],
-    this.propertyNames = const [],
-  });
+  DataTableWidget(
+      {this.jsonObjects = const [],
+      this.columnNames = const [],
+      this.propertyNames = const []});
 
   @override
   Widget build(BuildContext context) {
-    bool isAscending = false;
-    bool isDescending = false;
+    final sortAscending = useState(true);
+    final sortColumnIndex = useState(0);
 
-    if (dataService.temRequisicaoEmCurso()) {
-      bool currentAscending = dataService.tableStateNotifier.value['ascending'];
-
-      if (currentAscending) {
-        isAscending = true;
-      } else {
-        isDescending = true;
-      }
-    }
-
-    return Column(
-      children: [
-        if (isAscending) Text('Ordenação: Crescente'),
-        if (isDescending) Text('Ordenação: Decrescente'),
-        DataTable(
-          columns: columnNames.asMap().entries.map((entry) {
-            final index = entry.key;
-            final name = entry.value;
-
-            return DataColumn(
-              label: Text(
-                name,
-                style: TextStyle(fontStyle: FontStyle.italic),
-              ),
-              onSort: (int columnIndex, bool ascending) {
-                String propName = propertyNames[columnIndex];
-                dataService.ordenarEstadoAtual(
-                  propName,
-                  ordemCrescente: ascending,
-                );
-              },
-            );
-          }).toList(),
-          rows: jsonObjects.map((obj) {
-            return DataRow(
-              cells: propertyNames.map((propName) {
-                return DataCell(
-                  Text(obj[propName]),
-                );
-              }).toList(),
-            );
-          }).toList(),
-        ),
-      ],
-    );
+    return Center(
+        child: DataTable(
+            sortAscending: sortAscending.value,
+            sortColumnIndex: sortColumnIndex.value,
+            columns: columnNames
+                .map((name) => DataColumn(
+                    onSort: (columnIndex, ascending) {
+                      sortColumnIndex.value = columnIndex;
+                      sortAscending.value = !sortAscending.value;
+                      dataService.ordenarEstadoAtual(
+                          propertyNames[columnIndex], sortAscending.value);
+                    },
+                    label: Expanded(
+                        child: Text(name,
+                            style: TextStyle(fontStyle: FontStyle.italic)))))
+                .toList(),
+            rows: jsonObjects
+                .map((obj) => DataRow(
+                    cells: propertyNames
+                        .map((propName) => DataCell(Text(obj[propName])))
+                        .toList()))
+                .toList()));
   }
 }

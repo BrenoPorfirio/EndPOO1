@@ -33,9 +33,6 @@ enum ItemType {
 }
 
 class DataService {
-  String? sortCriteria;
-  bool ascending = true;
-
   static final values = [3, 7, 15];
 
   static int get MAX_N_ITEMS => values[2];
@@ -69,32 +66,29 @@ class DataService {
   }
 
   // Ordem crescente e decrescente ao apertar duas vezes na propriedade.
-  void ordenarEstadoAtual(String propriedade, {bool ordemCrescente = true}) {
+  void ordenarEstadoAtual(String propriedade, [bool cresc = true]) {
     List objetos = tableStateNotifier.value['dataObjects'] ?? [];
     if (objetos.isEmpty) return;
     Ordenador ord = Ordenador();
     var objetosOrdenados = [];
-    objetosOrdenados = ord.ordenadorCarinhoso(
-      objetos,
-      DecididorJson(propriedade, ordemCrescente).precisaTrocarAtualPeloProximo,
-      ordemCrescente,
-    );
-    sortCriteria = propriedade;
-    ascending = ordemCrescente;
-    emitirEstadoOrdenado(objetosOrdenados, propriedade, ordemCrescente);
-    // Inverter a direção da ordenação para a próxima chamada
-    ordemCrescente = !ordemCrescente;
+    bool crescente = cresc;
+    bool precisaTrocar(atual, proximo) {
+      final ordemCorreta = crescente ? [atual, proximo] : [proximo, atual];
+      return ordemCorreta[0][propriedade]
+              .compareTo(ordemCorreta[1][propriedade]) >
+          0;
+    }
+
+    objetosOrdenados = ord.ssOrdenar(objetos, precisaTrocar);
+    emitirEstadoOrdenado(objetosOrdenados, propriedade);
   }
 
   void emitirEstadoOrdenado(
     List objetosOrdenados,
     String propriedade,
-    bool crescente,
   ) {
     var estado = Map<String, dynamic>.from(tableStateNotifier.value);
     estado['dataObjects'] = objetosOrdenados;
-    estado['sortCriteria'] = propriedade;
-    estado['ascending'] = crescente;
     tableStateNotifier.value = estado;
   }
 
@@ -142,8 +136,6 @@ class DataService {
       return;
     }
     if (mudouTipoDeItemRequisitado(type)) {
-      sortCriteria = null; // Redefinir a ordenação atual
-      ascending = true; // Redefinir a direção como crescente
       emitirEstadoCarregando(type);
     }
 
