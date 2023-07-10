@@ -144,3 +144,75 @@ class DataTableWidget extends HookWidget {
                 .toList()));
   }
 }
+
+class SearchBar extends StatelessWidget {
+  final Icon leading;
+  final BoxConstraints constraints;
+  final ValueChanged<String> onChanged;
+
+  const SearchBar({
+    Key? key,
+    required this.leading,
+    required this.constraints,
+    required this.onChanged,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Flexible(
+      // Adicionado o Flexible para permitir que o SearchBar ocupe espaço disponível
+      child: Container(
+        constraints: constraints,
+        child: TextField(
+          decoration: InputDecoration(
+            prefixIcon: leading,
+            hintText: 'Pesquisar',
+          ),
+          onChanged: onChanged,
+        ),
+      ),
+    );
+  }
+}
+
+class MyAppBar extends HookWidget {
+  const MyAppBar({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    var state = useState(7);
+    var searchController = useTextEditingController();
+    return AppBar(title: Text("Dicas"), actions: [
+      SearchBar(
+        leading: Icon(
+          Icons.search,
+          color: Colors.grey,
+        ),
+        constraints: BoxConstraints(
+          minWidth: 1.0,
+          maxWidth: 280.0,
+        ),
+        onChanged: (filter) {
+          if (filter.length >= 3) {
+            dataService.filtrarEstadoAtual(filter);
+          } else {
+            dataService.filtrarEstadoAtual('');
+          }
+        },
+      ),
+      PopupMenuButton(
+        initialValue: state.value,
+        itemBuilder: (_) => values
+            .map((num) => PopupMenuItem(
+                  value: num,
+                  child: Text("Carregar $num itens por vez"),
+                ))
+            .toList(),
+        onSelected: (number) {
+          state.value = number;
+          dataService.numberOfItems = number;
+        },
+      )
+    ]);
+  }
+}
